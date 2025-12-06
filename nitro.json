@@ -1,0 +1,17 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": ["rnremoveimagebg"],
+  "ios": {
+    "iosModuleName": "NitroRnRemoveImageBg"
+  },
+  "android": {
+    "androidNamespace": ["rnremoveimagebg"],
+    "androidCxxLibName": "NitroRnRemoveImageBg"
+  },
+  "autolinking": {
+    "ImageBackgroundRemover": {
+      "kotlin": "HybridImageBackgroundRemover"
+    }
+  },
+  "ignorePaths": ["**/node_modules"]
+}
