@@ -1,7 +1,8 @@
 {
 	"name": "rn-remove-image-bg",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"description": "rn-remove-image-bg",
+	"homepage": "https://github.com/a-eid/rn-remove-image-bg",
 	"main": "lib/index",
 	"module": "lib/index",
 	"types": "lib/index.d.ts",
