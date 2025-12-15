@@ -28,9 +28,9 @@ export class BackgroundRemovalError extends Error {
     this.originalError = originalError
 
     // Maintain proper stack trace in V8 environments
+    // Maintain proper stack trace in V8 environments
     if ('captureStackTrace' in Error) {
-      // @ts-expect-error - captureStackTrace is V8-specific
-      Error.captureStackTrace(this, BackgroundRemovalError)
+      (Error as any).captureStackTrace(this, BackgroundRemovalError)
     }
   }
 
