@@ -1,3 +1,4 @@
+import { Image } from "react-native"
 import * as ImageManipulator from "expo-image-manipulator"
 import * as FileSystem from "expo-file-system/legacy"
 import { Buffer } from "buffer"
@@ -161,12 +162,29 @@ export async function compressImage(uri: string, options: CompressImageOptions =
   const startTime = Date.now()
   const maxSize = maxSizeKB * 1024
 
-  // Get original file size
+  // Get original file size and dimensions
   const originalInfo = await FileSystem.getInfoAsync(uri)
   const originalSize = "size" in originalInfo ? originalInfo.size : 0
 
-  // Start with specified dimensions and quality
-  let result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width, height } }], {
+  const { width: originalWidth, height: originalHeight } = await new Promise<{ width: number, height: number }>((resolve, reject) => {
+    Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), reject)
+  })
+
+  // Calculate target dimensions maintaining aspect ratio
+  // We want the image to fit WITHIN the bounding box defined by width x height
+  const scale = Math.min(width / originalWidth, height / originalHeight)
+  
+  // If image is smaller than target box, we can keep original size (scale = 1) if we don't want to upscale.
+  // Generally "compress" implies making smaller or equal. 
+  // If the image is larger, scale < 1. If smaller, scale >= 1.
+  // Let's cap scale at 1 to prevent upscaling unless explicitly desired (usually not for compression).
+  const finalScale = Math.min(scale, 1)
+
+  const resizeWidth = Math.round(originalWidth * finalScale)
+  const resizeHeight = Math.round(originalHeight * finalScale)
+
+  // Start with calculated dimensions and quality
+  let result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: resizeWidth, height: resizeHeight } }], {
     compress: quality,
     format,
   })
@@ -178,7 +196,7 @@ export async function compressImage(uri: string, options: CompressImageOptions =
     let currentQuality = quality * 0.9
 
     while (currentQuality > 0.5 && "size" in fileInfo && fileInfo.size > maxSize) {
-      result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width, height } }], {
+      result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: resizeWidth, height: resizeHeight } }], {
         compress: currentQuality,
         format,
       })
@@ -189,10 +207,10 @@ export async function compressImage(uri: string, options: CompressImageOptions =
       currentQuality -= 0.05
     }
 
-    // If still too large, try smaller dimensions
+    // If still too large, reduce dimensions
     if ("size" in fileInfo && fileInfo.size > maxSize) {
-      const smallerWidth = Math.floor(width * 0.75)
-      const smallerHeight = Math.floor(height * 0.75)
+      const smallerWidth = Math.floor(resizeWidth * 0.75)
+      const smallerHeight = Math.floor(resizeHeight * 0.75)
 
       result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: smallerWidth, height: smallerHeight } }], {
         compress: 0.75,
@@ -224,6 +242,7 @@ export async function compressImage(uri: string, options: CompressImageOptions =
     compressedSize: `${(finalSize / 1024).toFixed(2)} KB`,
     reduction: `${(((originalSize - finalSize) / originalSize) * 100).toFixed(1)}%`,
     duration: `${duration}ms`,
+    dimensions: `${resizeWidth}x${resizeHeight}`
   })
 
   return result.uri

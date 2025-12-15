@@ -1,6 +1,6 @@
 {
 	"name": "rn-remove-image-bg",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "rn-remove-image-bg",
 	"homepage": "https://github.com/a-eid/rn-remove-image-bg",
 	"main": "lib/index",
