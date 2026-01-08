@@ -5,17 +5,21 @@ import {
   removeBackground,
   clearCache,
   getCacheSize,
-} from "./ImageProcessing"
+  onLowMemory,
+  configureCache,
+  getCacheDirectory,
+} from './ImageProcessing';
 import type {
   CompressImageOptions,
   GenerateThumbhashOptions,
   RemoveBgImageOptions,
   OutputFormat,
-} from "./ImageProcessing"
+} from './ImageProcessing';
 import {
   BackgroundRemovalError,
   type BackgroundRemovalErrorCode,
-} from "./errors"
+} from './errors';
+import type { CacheConfig } from './cache';
 
 export {
   // Functions
@@ -25,9 +29,13 @@ export {
   removeBackground,
   clearCache,
   getCacheSize,
+  // Memory management
+  onLowMemory,
+  configureCache,
+  getCacheDirectory,
   // Errors
   BackgroundRemovalError,
-}
+};
 
 export type {
   // Options types
@@ -36,4 +44,6 @@ export type {
   RemoveBgImageOptions,
   OutputFormat,
   BackgroundRemovalErrorCode,
-}
+  // Cache types
+  CacheConfig,
+};

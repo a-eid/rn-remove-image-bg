@@ -1,4 +1,4 @@
-import type { HybridObject } from "react-native-nitro-modules";
+import type { HybridObject } from 'react-native-nitro-modules';
 /**
  * Output format for processed images
  */
@@ -28,8 +28,8 @@ export interface NativeRemoveBackgroundOptions {
     quality: number;
 }
 export interface ImageBackgroundRemover extends HybridObject<{
-    ios: "swift";
-    android: "kotlin";
+    ios: 'swift';
+    android: 'kotlin';
 }> {
     /**
      * Remove background from an image

@@ -9,7 +9,7 @@
 |----------|------------|-------------|
 | **iOS** | Vision Framework / CoreML | iOS 16+ |
 | **Android** | ML Kit Subject Segmentation | API 21+ |
-| **Web** | Not supported (no-op stubs) | — |
+| **Web** | @imgly/background-removal (WASM) | Modern browsers |
 
 ---
 
@@ -112,7 +112,11 @@ const result = await removeBgImage('file:///path/to/image.jpg', {
 
 #### Returns
 
-`Promise<string>` — File path to the processed image with transparent background.
+`Promise<string>` — A URI suitable for use as an `<Image>` source. The format varies by platform:
+- **iOS/Android**: File path (`file:///path/to/cache/bg_removed_xxx.png`)
+- **Web**: Data URL (`data:image/png;base64,...`)
+
+Both formats work directly with React Native's `<Image>` component.
 
 #### Example with Options
 
@@ -272,12 +276,14 @@ try {
 
 ### Web
 
-Web is **not supported**. All functions return no-op stubs:
-- `removeBgImage()` → Returns original URI
-- `compressImage()` → Returns original URI  
-- `generateThumbhash()` → Returns empty string
+- **Technology**: @imgly/background-removal (WebAssembly + ONNX)
+- **Model**: Downloads ~35MB on first use
+- **Output**: Data URL (`data:image/png;base64,...`) or WEBP
+- **Note**: Works in modern browsers with WebAssembly support
 
-This prevents crashes in React Native Web environments.
+> **Return Value Difference**: Web returns data URLs instead of file paths. Both work with `<Image>` components.
+
+If you don't need web support, you can tree-shake the `@imgly/background-removal` dependency.
 
 ---
 

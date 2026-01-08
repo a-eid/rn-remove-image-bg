@@ -1,5 +1,5 @@
-import * as ImageManipulator from "expo-image-manipulator";
-import type { OutputFormat, NativeRemoveBackgroundOptions } from "./specs/ImageBackgroundRemover.nitro";
+import * as ImageManipulator from 'expo-image-manipulator';
+import type { OutputFormat, NativeRemoveBackgroundOptions } from './specs/ImageBackgroundRemover.nitro';
 export type { OutputFormat, NativeRemoveBackgroundOptions };
 export interface CompressImageOptions {
     /**
@@ -81,14 +81,17 @@ export declare function generateThumbhash(imageUri: string, options?: GenerateTh
  *
  * @param uri - File path or file:// URI to the source image
  * @param options - Processing options
- * @returns Promise resolving to file:// URI of the processed image with transparent background
+ * @returns Promise resolving to a URI suitable for use with `<Image>` component.
+ *   - **iOS/Android**: File path (`file:///path/to/cache/bg_removed_xxx.png`)
+ *   - **Web**: Data URL (`data:image/png;base64,...`)
  *
  * @throws {BackgroundRemovalError} When image cannot be processed
  *
  * @example
  * ```typescript
  * const result = await removeBgImage('file:///path/to/photo.jpg')
- * console.log(result) // file:///cache/bg_removed_xxx.png
+ * // Use directly in Image component
+ * <Image source={{ uri: result }} />
  * ```
  *
  * @example
@@ -110,9 +113,55 @@ export declare function removeBgImage(uri: string, options?: RemoveBgImageOption
 export declare const removeBackground: typeof removeBgImage;
 /**
  * Clear the background removal cache
+ * @param deleteFiles - Also delete cached files from disk (default: false)
  */
-export declare function clearCache(): void;
+export declare function clearCache(deleteFiles?: boolean): Promise<void>;
 /**
  * Get the current cache size
  */
 export declare function getCacheSize(): number;
+/**
+ * Handle low memory conditions by clearing the cache
+ * Call this when your app receives memory warnings
+ *
+ * @param deleteFiles - Also delete cached files from disk (default: true)
+ * @returns Number of entries that were cleared
+ *
+ * @example
+ * ```typescript
+ * import { AppState } from 'react-native'
+ * import { onLowMemory } from 'rn-remove-image-bg'
+ *
+ * // In your app initialization
+ * AppState.addEventListener('memoryWarning', () => {
+ *   onLowMemory()
+ * })
+ * ```
+ */
+export declare function onLowMemory(deleteFiles?: boolean): Promise<number>;
+/**
+ * Configure the background removal cache
+ * Call this early in your app lifecycle to customize cache behavior
+ *
+ * @example
+ * ```typescript
+ * import { configureCache } from 'rn-remove-image-bg'
+ *
+ * configureCache({
+ *   maxEntries: 100,
+ *   maxAgeMinutes: 60,
+ *   persistToDisk: true
+ * })
+ * ```
+ */
+export declare function configureCache(config: {
+    maxEntries?: number;
+    maxAgeMinutes?: number;
+    persistToDisk?: boolean;
+    cacheDirectory?: string;
+}): void;
+/**
+ * Get the cache directory path
+ * Useful for debugging or manual cache management
+ */
+export declare function getCacheDirectory(): string;
