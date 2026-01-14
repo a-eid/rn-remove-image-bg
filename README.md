@@ -270,9 +270,11 @@ try {
 ### Android
 
 - **Technology**: ML Kit Subject Segmentation (beta)
-- **Model**: Downloads ~10MB on first use
+- **Model**: Downloads ~10MB on first use (handled automatically)
 - **Output**: PNG or WEBP (lossy/lossless based on quality)
 - **Requires**: Google Play Services
+
+> **First-time Use**: On Android, the ML Kit model downloads automatically on first use. The library waits for the download to complete (up to ~15 seconds with retries) before processing. Subsequent calls are instant.
 
 ### Web
 

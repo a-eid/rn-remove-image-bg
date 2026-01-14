@@ -3,6 +3,9 @@ package com.margelo.nitro.rnremoveimagebg
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.segmentation.subject.SubjectSegmentation
 import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
@@ -14,6 +17,7 @@ import com.margelo.nitro.NitroModules
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
+import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -24,6 +28,12 @@ import kotlinx.coroutines.withContext
 class HybridImageBackgroundRemover : HybridImageBackgroundRemoverSpec() {
     override val memorySize: Long
         get() = 0L
+
+    companion object {
+        private const val TAG = "RNRemoveImageBg"
+        private const val MAX_RETRIES = 10
+        private const val BASE_DELAY_MS = 1500L
+    }
 
     private val segmenter by lazy {
         val options = SubjectSegmenterOptions.Builder()
@@ -55,44 +65,80 @@ class HybridImageBackgroundRemover : HybridImageBackgroundRemoverSpec() {
         val inputImage = InputImage.fromBitmap(bitmap, 0)
 
         return suspendCoroutine { continuation ->
-            segmenter.process(inputImage)
-                .addOnSuccessListener { result ->
-                    val foregroundBitmap = result.foregroundBitmap
-                    if (foregroundBitmap != null) {
-                        try {
-                            val context = NitroModules.applicationContext
-                            if (context == null) {
-                                bitmap.recycle()
-                                foregroundBitmap.recycle()
-                                continuation.resumeWithException(Exception("Application Context is null"))
-                                return@addOnSuccessListener
-                            }
-                            
-                            val outputPath = saveImage(
-                                foregroundBitmap,
-                                context.cacheDir,
-                                options.format,
-                                options.quality.toInt()
-                            )
-                            
+            processWithRetry(inputImage, bitmap, options, continuation, retryCount = 0)
+        }
+    }
+
+    /**
+     * Process image with retry logic for ML Kit model download.
+     * ML Kit Subject Segmentation downloads ~10MB model on first use.
+     * This method waits and retries if the model is still downloading.
+     */
+    private fun processWithRetry(
+        inputImage: InputImage,
+        bitmap: Bitmap,
+        options: NativeRemoveBackgroundOptions,
+        continuation: Continuation<String>,
+        retryCount: Int
+    ) {
+        segmenter.process(inputImage)
+            .addOnSuccessListener { result ->
+                val foregroundBitmap = result.foregroundBitmap
+                if (foregroundBitmap != null) {
+                    try {
+                        val context = NitroModules.applicationContext
+                        if (context == null) {
                             bitmap.recycle()
                             foregroundBitmap.recycle()
-                            continuation.resume(outputPath)
-                        } catch (e: Exception) {
-                            bitmap.recycle()
-                            foregroundBitmap.recycle()
-                            continuation.resumeWithException(e)
+                            continuation.resumeWithException(Exception("Application Context is null"))
+                            return@addOnSuccessListener
                         }
-                    } else {
+                        
+                        val outputPath = saveImage(
+                            foregroundBitmap,
+                            context.cacheDir,
+                            options.format,
+                            options.quality.toInt()
+                        )
+                        
                         bitmap.recycle()
-                        continuation.resumeWithException(Exception("Could not generate foreground bitmap"))
+                        foregroundBitmap.recycle()
+                        continuation.resume(outputPath)
+                    } catch (e: Exception) {
+                        bitmap.recycle()
+                        foregroundBitmap.recycle()
+                        continuation.resumeWithException(e)
+                    }
+                } else {
+                    bitmap.recycle()
+                    continuation.resumeWithException(Exception("Could not generate foreground bitmap"))
+                }
+            }
+            .addOnFailureListener { e ->
+                // Check if error is due to model still downloading
+                val isModelDownloading = e.message?.contains("Waiting for", ignoreCase = true) == true ||
+                    e.message?.contains("downloading", ignoreCase = true) == true ||
+                    e.message?.contains("not yet available", ignoreCase = true) == true
+                
+                if (isModelDownloading && retryCount < MAX_RETRIES) {
+                    // Calculate delay with exponential backoff (1.5s, 3s, 4.5s, ...)
+                    val delayMs = BASE_DELAY_MS * (retryCount + 1)
+                    Log.d(TAG, "ML Kit model downloading, retry ${retryCount + 1}/$MAX_RETRIES in ${delayMs}ms")
+                    
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        processWithRetry(inputImage, bitmap, options, continuation, retryCount + 1)
+                    }, delayMs)
+                } else {
+                    bitmap.recycle()
+                    if (isModelDownloading) {
+                        continuation.resumeWithException(
+                            Exception("ML Kit model download timed out. Please check your internet connection and try again.")
+                        )
+                    } else {
+                        continuation.resumeWithException(e)
                     }
                 }
-                .addOnFailureListener { e ->
-                    bitmap.recycle()
-                    continuation.resumeWithException(e)
-                }
-        }
+            }
     }
 
     /**

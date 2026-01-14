@@ -35,8 +35,8 @@ export interface RemoveBgImageOptions {
 }
 // Web cache configuration
 const webCacheConfig = {
-	maxEntries: 50,
-	maxAgeMinutes: 30,
+  maxEntries: 50,
+  maxAgeMinutes: 30,
 };
 
 // Simple in-memory LRU cache for web
@@ -46,33 +46,33 @@ const webCache = new Map<string, string>();
  * Add entry to cache with LRU eviction
  */
 function setCacheEntry(key: string, value: string): void {
-	// If key exists, delete it first (to update LRU order)
-	if (webCache.has(key)) {
-		webCache.delete(key);
-	}
+  // If key exists, delete it first (to update LRU order)
+  if (webCache.has(key)) {
+    webCache.delete(key);
+  }
 
-	// Evict oldest entries if at capacity
-	while (webCache.size >= webCacheConfig.maxEntries) {
-		const oldestKey = webCache.keys().next().value;
-		if (oldestKey) {
-			webCache.delete(oldestKey);
-		}
-	}
+  // Evict oldest entries if at capacity
+  while (webCache.size >= webCacheConfig.maxEntries) {
+    const oldestKey = webCache.keys().next().value;
+    if (oldestKey) {
+      webCache.delete(oldestKey);
+    }
+  }
 
-	webCache.set(key, value);
+  webCache.set(key, value);
 }
 
 /**
  * Get entry from cache and update LRU order
  */
 function getCacheEntry(key: string): string | undefined {
-	const value = webCache.get(key);
-	if (value !== undefined) {
-		// Move to end (most recently used)
-		webCache.delete(key);
-		webCache.set(key, value);
-	}
-	return value;
+  const value = webCache.get(key);
+  if (value !== undefined) {
+    // Move to end (most recently used)
+    webCache.delete(key);
+    webCache.set(key, value);
+  }
+  return value;
 }
 
 /**
@@ -209,8 +209,9 @@ export async function removeBgImage(
 
   try {
     // Dynamically import the library to prevent Metro from parsing onnxruntime-web at build time
-    const { removeBackground: imglyRemoveBackground } = await import('@imgly/background-removal');
-    
+    const { removeBackground: imglyRemoveBackground } =
+      await import('@imgly/background-removal');
+
     // Call @imgly/background-removal
     const blob = await imglyRemoveBackground(uri, {
       progress: (key: string, current: number, total: number) => {
@@ -247,9 +248,9 @@ export async function removeBgImage(
     return dataUrl;
   } catch (error) {
     console.error('[rn-remove-image-bg] Web background removal failed:', error);
-    // Return original URI on failure
-    onProgress?.(100);
-    return uri;
+    // Throw error instead of silent failure
+    const message = error instanceof Error ? error.message : 'Web background removal failed';
+    throw new Error(`Background removal failed: ${message}`);
   }
 }
 
