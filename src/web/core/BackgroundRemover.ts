@@ -1,0 +1,105 @@
+import type { RemoveBgImageOptions } from './types';
+import { mapErrorToBackgroundRemovalError, BackgroundRemovalError } from '../errors/WebErrorAdapter';
+import { normalizeUri } from '../utils/uriHelper';
+
+// Type for the CDN-loaded @imgly/background-removal function
+type ImglyConfig = {
+  publicPath?: string;
+  progress?: (key: string, current: number, total: number) => void;
+  debug?: boolean;
+  output?: {
+    format?: 'image/png' | 'image/jpeg' | 'image/webp';
+    quality?: number;
+    type?: 'foreground' | 'background' | 'mask';
+  };
+};
+
+type ImglyRemoveBackground = (
+  image: string | Blob | ArrayBuffer,
+  config?: ImglyConfig
+) => Promise<Blob>;
+
+// Declare the global window property
+declare global {
+  interface Window {
+    imglyRemoveBackground?: ImglyRemoveBackground;
+  }
+}
+
+/**
+ * Gets the @imgly removeBackground function from window.
+ * This must be loaded via CDN script tag before use.
+ */
+function getImglyRemoveBackground(): ImglyRemoveBackground {
+  if (typeof window === 'undefined') {
+    throw new BackgroundRemovalError(
+      'Background removal is only available in browser environment.',
+      'ENVIRONMENT_ERROR'
+    );
+  }
+  
+  if (!window.imglyRemoveBackground) {
+    throw new BackgroundRemovalError(
+      'Background removal library not loaded. Please add the following script to your HTML:\n' +
+      '<script type="module">\n' +
+      '  import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";\n' +
+      '  window.imglyRemoveBackground = removeBackground;\n' +
+      '</script>',
+      'LIBRARY_NOT_LOADED'
+    );
+  }
+  
+  return window.imglyRemoveBackground;
+}
+
+export const BackgroundRemover = {
+  /**
+   * Checks if the background removal library is loaded.
+   */
+  isAvailable(): boolean {
+    return typeof window !== 'undefined' && typeof window.imglyRemoveBackground === 'function';
+  },
+
+  /**
+   * Removes background from an image.
+   * Returns a Blob of the processed image (PNG with transparency).
+   * 
+   * Requires @imgly/background-removal to be loaded via CDN script tag.
+   */
+  async remove(uri: string, options: RemoveBgImageOptions): Promise<Blob> {
+    try {
+      const imglyRemove = getImglyRemoveBackground();
+      const normalizedUri = await normalizeUri(uri);
+      
+      const config: ImglyConfig = {
+        // Pass publicPath if provided (for self-hosted assets)
+        publicPath: options.publicPath,
+        
+        // Map progress callback
+        progress: (_key: string, current: number, total: number) => {
+          if (options.onProgress && total > 0) {
+            const p = Math.min(100, Math.round((current / total) * 100));
+            options.onProgress(p);
+          }
+        },
+        
+        // Enable debug logging if requested
+        debug: options.debug ?? false,
+        
+        // Explicit output configuration for transparent PNG
+        output: {
+          format: 'image/png',
+          quality: 1.0,
+          type: 'foreground',  // Extract foreground with transparency
+        },
+      };
+
+      // Execute removal
+      const blob = await imglyRemove(normalizedUri, config);
+      return blob;
+
+    } catch (error) {
+      throw mapErrorToBackgroundRemovalError(error);
+    }
+  }
+};

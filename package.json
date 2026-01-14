@@ -1,6 +1,6 @@
 {
   "name": "rn-remove-image-bg",
-  "version": "0.0.12",
+  "version": "0.0.28",
   "description": "rn-remove-image-bg",
   "homepage": "https://github.com/a-eid/rn-remove-image-bg",
   "main": "lib/index",
@@ -49,8 +49,8 @@
   "author": "Ahmed Eid <a.eid@yandex.com> (https://github.com/a-eid)",
   "license": "MIT",
   "devDependencies": {
-    "@react-native/eslint-config": "0.82.0",
     "@biomejs/biome": "^2.3.11",
+    "@react-native/eslint-config": "0.82.0",
     "@types/react": "^19.1.03",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
@@ -63,11 +63,11 @@
     "vitest": "^3.0.0"
   },
   "peerDependencies": {
+    "expo-file-system": "*",
+    "expo-image-manipulator": "*",
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": "0.31.10",
-    "expo-file-system": "*",
-    "expo-image-manipulator": "*"
+    "react-native-nitro-modules": "0.31.10"
   },
   "eslintConfig": {
     "root": true,
@@ -96,7 +96,6 @@
     "lib/"
   ],
   "dependencies": {
-    "@imgly/background-removal": "^1.7.0",
     "buffer": "^6.0.3",
     "thumbhash": "^0.1.1",
     "upng-js": "^2.1.0"

@@ -15,28 +15,8 @@
 
 ## Installation
 
-Install from GitHub:
-
 ```bash
-# Using npm
-npm install github:a-eid/rn-remove-image-bg react-native-nitro-modules
-
-# Using yarn
-yarn add github:a-eid/rn-remove-image-bg react-native-nitro-modules
-
-# Using pnpm
-pnpm add github:a-eid/rn-remove-image-bg react-native-nitro-modules
-```
-
-Or add to your `package.json`:
-
-```json
-{
-  "dependencies": {
-    "rn-remove-image-bg": "github:a-eid/rn-remove-image-bg",
-    "react-native-nitro-modules": "0.31.10"
-  }
-}
+npm install rn-remove-image-bg react-native-nitro-modules
 ```
 
 ### Peer Dependencies
@@ -59,17 +39,85 @@ cd ios && pod install
 
 No additional setup required. The ML Kit model (~10MB) downloads automatically on first use.
 
+> **Important:** Android requires Google Play Services. The first call may take 10-15 seconds while the model downloads.
+
 ---
 
 ## Quick Start
 
+### Basic Usage
+
 ```typescript
 import { removeBgImage } from 'rn-remove-image-bg'
 
-// Remove background from an image
 const resultUri = await removeBgImage('file:///path/to/photo.jpg')
-console.log(resultUri) // file:///path/to/cache/bg_removed_xxx.png
+// Returns: file:///path/to/cache/bg_removed_xxx.png (native)
+// Returns: data:image/png;base64,... (web)
 ```
+
+### With React Query (Recommended)
+
+```typescript
+import { useMutation } from '@tanstack/react-query'
+import { removeBgImage } from 'rn-remove-image-bg'
+import { Alert } from 'react-native'
+
+function useRemoveBackground() {
+  return useMutation({
+    mutationFn: async (imageUri: string) => {
+      return await removeBgImage(imageUri, {
+        maxDimension: 1024,  // Faster processing
+        format: 'PNG',       // Best for transparency
+        useCache: true,      // Cache results
+      })
+    },
+    onError: (error) => {
+      Alert.alert('Error', error.message)
+    },
+  })
+}
+
+// In your component:
+function ImageEditor() {
+  const removeBackground = useRemoveBackground()
+  
+  const handleRemoveBackground = () => {
+    removeBackground.mutate(selectedImageUri, {
+      onSuccess: (resultUri) => {
+        setProcessedImage(resultUri)
+      },
+    })
+  }
+  
+  return (
+    <Button 
+      onPress={handleRemoveBackground}
+      disabled={removeBackground.isPending}
+      title={removeBackground.isPending ? 'Processing...' : 'Remove Background'}
+    />
+  )
+}
+```
+
+### With Expo Image Picker
+
+```typescript
+import * as ImagePicker from 'expo-image-picker'
+import { removeBgImage } from 'rn-remove-image-bg'
+
+async function pickAndProcessImage() {
+  // Pick image
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 1,
+  })
+  
+  if (result.canceled) return null
+  
+  // Remove background
+  const processedUri = await removeBgImage(result.assets[0].uri)
+  return processedUri
+}
 
 ---
 
@@ -276,16 +324,53 @@ try {
 
 > **First-time Use**: On Android, the ML Kit model downloads automatically on first use. The library waits for the download to complete (up to ~15 seconds with retries) before processing. Subsequent calls are instant.
 
-### Web
+### Web (React Native Web)
 
-- **Technology**: @imgly/background-removal (WebAssembly + ONNX)
-- **Model**: Downloads ~35MB on first use
-- **Output**: Data URL (`data:image/png;base64,...`) or WEBP
-- **Note**: Works in modern browsers with WebAssembly support
+This package supports **React Native Web** via the `@imgly/background-removal` library loaded from CDN.
 
-> **Return Value Difference**: Web returns data URLs instead of file paths. Both work with `<Image>` components.
+#### Setup (Required)
 
-If you don't need web support, you can tree-shake the `@imgly/background-removal` dependency.
+Add this script tag to your `index.html` (before your app bundle):
+
+```html
+<script type="module">
+  import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+  window.imglyRemoveBackground = removeBackground;
+</script>
+```
+
+> **Why CDN?** The `@imgly/background-removal` library uses dynamic imports that Metro bundler doesn't support. Loading from CDN bypasses this limitation.
+
+#### Usage
+
+Use `removeBgImage` exactly like on native platforms:
+
+```typescript
+import { removeBgImage } from 'rn-remove-image-bg';
+
+const result = await removeBgImage(uri, {
+  maxDimension: 1024,
+  onProgress: (p) => console.log(`Progress: ${p}%`),
+});
+```
+
+#### First-Time Use
+
+On first use, the library downloads AI models (~30MB) from the CDN and caches them in IndexedDB. Subsequent uses are much faster.
+
+#### Compatibility
+
+- **Browsers**: Chrome, Edge, Firefox, Safari (with WebGPU or WebGL2)
+- **Expo Web**: ✅ Works with Metro bundler
+- **CORS**: Remote images must have `Access-Control-Allow-Origin: *` headers
+
+#### Troubleshooting (Web)
+
+| Error | Solution |
+|-------|----------|
+| `Background removal library not loaded` | Add the script tag to your HTML |
+| `"Resource not found"` (404s) | Check internet connection (models download from CDN) |
+| `"Tainted canvas"` / CORS errors | Ensure image server sends CORS headers |
 
 ---
 
@@ -361,9 +446,38 @@ If you don't need web support, you can tree-shake the `@imgly/background-removal
 
 ### Android Model Not Loading?
 
-1. Ensure device has Google Play Services
-2. Check internet connection for first download
-3. Clear app cache and retry
+1. Ensure device has Google Play Services installed
+2. Check internet connection (model downloads on first use)
+3. Wait 10-15 seconds - the library automatically retries during download
+4. Clear app cache and retry: `adb shell pm clear com.yourapp`
+
+### Web Not Working?
+
+1. **CSP Errors**: If you see "Content Security Policy" errors, ensure your app allows loading scripts/workers from `https://cdn.jsdelivr.net` and `blob:` URLs.
+2. **CORS Errors**: If loading an image from a URL, the server *must* return `Access-Control-Allow-Origin: *`. If not, download the image to a Blob first or use a proxy.
+3. **Data URL**: Remember that the web result is a `data:` URL. You can use it directly in `<Image source={{ uri: result }} />`.
+
+### Native Module Not Found?
+
+```bash
+# iOS
+cd ios && pod install && cd ..
+npx expo run:ios --device
+
+# Android  
+npx expo run:android --device
+
+# For Expo managed workflow
+npx expo prebuild --clean
+```
+
+### TypeScript Errors?
+
+Ensure peer dependencies match:
+```bash
+npx expo install expo-file-system expo-image-manipulator
+npm install react-native-nitro-modules@0.31.10
+```
 
 ---
 
