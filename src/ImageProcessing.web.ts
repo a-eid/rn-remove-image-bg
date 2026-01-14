@@ -5,7 +5,8 @@
  * Falls back to no-op if the library fails to load.
  */
 
-import { removeBackground as imglyRemoveBackground } from '@imgly/background-removal';
+// @imgly/background-removal is dynamically imported at runtime in removeBgImage()
+// to prevent Metro from parsing onnxruntime-web at build time
 
 /**
  * Output format for processed images
@@ -207,6 +208,9 @@ export async function removeBgImage(
   onProgress?.(5);
 
   try {
+    // Dynamically import the library to prevent Metro from parsing onnxruntime-web at build time
+    const { removeBackground: imglyRemoveBackground } = await import('@imgly/background-removal');
+    
     // Call @imgly/background-removal
     const blob = await imglyRemoveBackground(uri, {
       progress: (key: string, current: number, total: number) => {
