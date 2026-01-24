@@ -4,7 +4,7 @@ import { loadImage } from './uriHelper';
 export async function compressImage(uri: string, options: CompressImageOptions): Promise<string> {
   const img = await loadImage(uri);
   
-  let { width, height, quality = 0.8, format = 'jpeg' } = options;
+  let { width, height, quality = 0.8, format = 'webp' } = options;
   
   // Default dimensions to original if not specified
   if (!width) width = img.naturalWidth;
