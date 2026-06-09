@@ -1,4 +1,5 @@
 import Foundation
+import NitroModules
 import Vision
 import CoreImage
 import UIKit
