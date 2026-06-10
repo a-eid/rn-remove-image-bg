@@ -1,0 +1,23 @@
+{
+  "active_plan": "/Users/ahmedelshentenawy/accelerated.work/abo-omar/rn-remove-image-bg/.sisyphus/plans/fix-nitro-import.md",
+  "started_at": "2026-06-09T14:42:14.626Z",
+  "session_ids": [
+    "ses_153a80ec5ffevxG2dYS0NHehOp"
+  ],
+  "plan_name": "fix-nitro-import",
+  "worktree_path": null,
+  "session_origins": {
+    "ses_153a80ec5ffevxG2dYS0NHehOp": "direct"
+  },
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Add `import NitroModules` to Swift implementation file",
+      "session_id": "ses_1530cd6a6ffem5oUpAUeocjXRM",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-06-09T15:44:38.057Z"
+    }
+  }
+}
